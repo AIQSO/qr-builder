@@ -7,7 +7,7 @@ name = "qr-builder"
 version = "0.1.0"
 description = "Generate and embed QR codes into images via Python, CLI, and FastAPI."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [
   { name = "AIQSO", email = "dev@aiqso.io" }
@@ -30,6 +30,7 @@ dependencies = [
   "Pillow>=10.0.0",
   "fastapi>=0.115.0",
   "uvicorn[standard]>=0.30.0",
+  "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]
