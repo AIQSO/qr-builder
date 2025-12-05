@@ -15,7 +15,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from .core import generate_qr_only, embed_qr_in_image
+from .core import generate_qr_only, embed_qr_in_image, generate_qr_with_logo, generate_artistic_qr
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -61,6 +61,26 @@ def build_parser() -> argparse.ArgumentParser:
     embed.add_argument("--margin", type=int, default=20)
     embed.add_argument("--fill-color", default="black")
     embed.add_argument("--back-color", default="white")
+
+    # QR with logo in center
+    logo_qr = sub.add_parser("logo", help="Generate QR code with logo embedded in center.")
+    logo_qr.add_argument("logo", help="Path to logo image.")
+    logo_qr.add_argument("data", help="Text/URL to encode.")
+    logo_qr.add_argument("output", help="Output file path (PNG recommended).")
+    logo_qr.add_argument("--size", type=int, default=500, help="QR code size in pixels.")
+    logo_qr.add_argument("--logo-scale", type=float, default=0.25, help="Logo size as fraction of QR (0.1-0.4).")
+    logo_qr.add_argument("--fill-color", default="black", help="QR foreground color.")
+    logo_qr.add_argument("--back-color", default="white", help="QR background color.")
+
+    # Artistic QR - image IS the QR code
+    artistic = sub.add_parser("artistic", help="Generate artistic QR where image IS the QR code.")
+    artistic.add_argument("image", help="Path to image to transform into QR.")
+    artistic.add_argument("data", help="Text/URL to encode.")
+    artistic.add_argument("output", help="Output file path (PNG recommended).")
+    artistic.add_argument("--bw", action="store_true", help="Black & white instead of colorized.")
+    artistic.add_argument("--contrast", type=float, default=1.0, help="Image contrast (default 1.0).")
+    artistic.add_argument("--brightness", type=float, default=1.0, help="Image brightness (default 1.0).")
+    artistic.add_argument("--version", type=int, default=10, help="QR version 1-40 (default 10).")
 
     # Batch embed (directory-based)
     batch = sub.add_parser(
@@ -120,6 +140,26 @@ def main() -> None:
             margin=args.margin,
             fill_color=args.fill_color,
             back_color=args.back_color,
+        )
+    elif args.command == "logo":
+        generate_qr_with_logo(
+            data=args.data,
+            logo_path=args.logo,
+            output_path=args.output,
+            size=args.size,
+            logo_scale=args.logo_scale,
+            fill_color=args.fill_color,
+            back_color=args.back_color,
+        )
+    elif args.command == "artistic":
+        generate_artistic_qr(
+            data=args.data,
+            image_path=args.image,
+            output_path=args.output,
+            colorized=not args.bw,
+            contrast=args.contrast,
+            brightness=args.brightness,
+            version=args.version,
         )
     elif args.command == "batch-embed":
         from glob import glob

@@ -202,3 +202,144 @@ def generate_qr_only(
     img.save(output_path)
     logger.info("Saved QR-only image: %s", output_path)
     return output_path
+
+
+def generate_artistic_qr(
+    data: str,
+    image_path: str | Path,
+    output_path: str | Path,
+    colorized: bool = True,
+    contrast: float = 1.0,
+    brightness: float = 1.0,
+    version: int = 10,
+) -> Path:
+    """
+    Generate an artistic QR code where the image IS the QR code.
+
+    The image is blended into the QR code pattern itself, creating a
+    visually striking QR code that displays the image while remaining scannable.
+
+    Args:
+        data: Text/URL to encode in the QR code.
+        image_path: Path to the image to merge into the QR pattern.
+        output_path: File path to save the final image.
+        colorized: If True, keeps original colors. If False, black & white.
+        contrast: Image contrast adjustment (default 1.0).
+        brightness: Image brightness adjustment (default 1.0).
+        version: QR code version 1-40 (higher = more data capacity, default 10).
+
+    Returns:
+        Path: Saved output file.
+
+    Raises:
+        FileNotFoundError: If image file doesn't exist.
+    """
+    from amzqr import amzqr
+
+    image_path = Path(image_path)
+    output_path = Path(output_path)
+
+    if not image_path.exists():
+        raise FileNotFoundError(f"Image not found: {image_path}")
+
+    logger.info("Generating artistic QR from image: %s", image_path)
+
+    # amzqr requires separate dir and filename
+    save_dir = str(output_path.parent) or "."
+    save_name = output_path.name
+
+    amzqr.run(
+        data,
+        version=version,
+        level="H",  # High error correction for better scannability
+        picture=str(image_path),
+        colorized=colorized,
+        contrast=contrast,
+        brightness=brightness,
+        save_name=save_name,
+        save_dir=save_dir,
+    )
+
+    logger.info("Saved artistic QR: %s", output_path)
+    return output_path
+
+
+def generate_qr_with_logo(
+    data: str,
+    logo_path: str | Path,
+    output_path: str | Path,
+    size: int = 500,
+    logo_scale: float = 0.3,
+    fill_color: str = "black",
+    back_color: str = "white",
+) -> Path:
+    """
+    Generate a QR code with a logo embedded in the center.
+
+    The logo is placed in the center of the QR code. QR codes have error
+    correction (we use HIGH/30%) which allows up to 30% of the code to be
+    obscured while still being scannable.
+
+    Args:
+        data: Text/URL to encode in the QR code.
+        logo_path: Path to the logo image to embed.
+        output_path: File path to save the final image.
+        size: Final QR code size in pixels.
+        logo_scale: Logo size as fraction of QR size (0.1-0.4 recommended).
+        fill_color: QR code foreground color.
+        back_color: QR code background color.
+
+    Returns:
+        Path: Saved output file.
+
+    Raises:
+        FileNotFoundError: If logo file doesn't exist.
+        ValueError: If logo_scale is out of range.
+    """
+    logo_path = Path(logo_path)
+    if not logo_path.exists():
+        raise FileNotFoundError(f"Logo image not found: {logo_path}")
+
+    if not (0.1 <= logo_scale <= 0.4):
+        raise ValueError("logo_scale should be between 0.1 and 0.4 for reliable scanning.")
+
+    logger.info("Generating QR with embedded logo: %s", logo_path)
+
+    # Generate QR code
+    qr_img = generate_qr(
+        data,
+        qr_size=size,
+        fill_color=fill_color,
+        back_color=back_color,
+    )
+
+    # Open and resize logo
+    logo = Image.open(logo_path).convert("RGBA")
+    logo_size = int(size * logo_scale)
+    logo = logo.resize((logo_size, logo_size), Image.LANCZOS)
+
+    # Calculate center position
+    pos_x = (size - logo_size) // 2
+    pos_y = (size - logo_size) // 2
+
+    # Create a white background box for the logo (improves scannability)
+    box_padding = 10
+    box_size = logo_size + box_padding * 2
+    box_pos = ((size - box_size) // 2, (size - box_size) // 2)
+
+    # Draw white rectangle behind logo
+    from PIL import ImageDraw
+    draw = ImageDraw.Draw(qr_img)
+    draw.rectangle(
+        [box_pos, (box_pos[0] + box_size, box_pos[1] + box_size)],
+        fill=back_color,
+    )
+
+    # Paste logo onto QR code
+    qr_img.paste(logo, (pos_x, pos_y), logo)
+
+    # Save result
+    output_path = Path(output_path)
+    qr_img.save(output_path)
+    logger.info("Saved QR with logo: %s", output_path)
+    return output_path
