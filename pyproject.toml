@@ -32,6 +32,9 @@ dependencies = [
   "uvicorn[standard]>=0.30.0",
   "python-multipart>=0.0.9",
   "amzqr>=0.0.1",
+  "pyqart>=0.1.0",
+  "segno>=1.6.0",
+  "qrcode-artistic>=3.0.0",
 ]
 
 [project.optional-dependencies]
