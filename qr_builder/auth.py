@@ -18,38 +18,54 @@ Integration with aiqso.io:
 
 from __future__ import annotations
 
-import os
-import time
 import hashlib
 import logging
-from enum import Enum
-from typing import Optional, Callable
-from dataclasses import dataclass, field
+import time
 from collections import defaultdict
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from enum import Enum
 
-from fastapi import Request, HTTPException, Header, Depends
+from fastapi import Depends, Header, HTTPException, Request
 from fastapi.security import APIKeyHeader
 
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-# Configuration (from environment variables)
+# Configuration (from centralized config module)
 # =============================================================================
 
-# Backend secret for webhook authentication (set this in your deployment)
-BACKEND_SECRET = os.getenv("QR_BUILDER_BACKEND_SECRET", "change-me-in-production")
+from .config import get_config
 
-# Your backend URL for token validation (Odoo/Next.js backend)
-BACKEND_VALIDATION_URL = os.getenv("QR_BUILDER_BACKEND_URL", "https://api.aiqso.io")
 
-# Enable/disable authentication (disable for local development)
-AUTH_ENABLED = os.getenv("QR_BUILDER_AUTH_ENABLED", "true").lower() == "true"
+def get_backend_secret() -> str:
+    """Get backend secret from config."""
+    return get_config().security.backend_secret
 
-# Allowed origins for CORS
-ALLOWED_ORIGINS = os.getenv(
-    "QR_BUILDER_ALLOWED_ORIGINS",
-    "https://aiqso.io,https://www.aiqso.io,https://api.aiqso.io"
-).split(",")
+
+def get_backend_url() -> str:
+    """Get backend URL from config."""
+    return get_config().security.backend_url
+
+
+def is_auth_enabled() -> bool:
+    """Check if auth is enabled from config."""
+    return get_config().security.auth_enabled
+
+
+def get_allowed_origins() -> list:
+    """Get allowed origins from config."""
+    return get_config().security.allowed_origins
+
+
+# Backward compatibility module-level "constants"
+# NOTE: These are evaluated at import time. For runtime values, use the functions above.
+# For most use cases in this module, we use the functions directly.
+_config = get_config()
+BACKEND_SECRET = _config.security.backend_secret
+BACKEND_VALIDATION_URL = _config.security.backend_url
+AUTH_ENABLED = _config.security.auth_enabled
+ALLOWED_ORIGINS = _config.security.allowed_origins
 
 
 # =============================================================================
@@ -127,7 +143,7 @@ class UserSession:
     user_id: str
     tier: UserTier
     api_key: str
-    email: Optional[str] = None
+    email: str | None = None
 
     # Rate limiting tracking
     requests_this_minute: int = 0
@@ -201,7 +217,7 @@ class SessionStore:
         user_id: str,
         tier: UserTier,
         api_key: str,
-        email: Optional[str] = None,
+        email: str | None = None,
     ) -> UserSession:
         """Get existing session or create new one."""
         if api_key not in self._sessions:
@@ -230,7 +246,7 @@ class SessionStore:
         user_id: str,
         style: str,
         success: bool,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> None:
         """Log usage for Odoo sync."""
         self._usage_log.append({
@@ -279,7 +295,7 @@ session_store = SessionStore()
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
-async def validate_api_key_with_backend(api_key: str) -> Optional[dict]:
+async def validate_api_key_with_backend(api_key: str) -> dict | None:
     """
     Validate API key with your backend (Odoo/Next.js).
 
@@ -297,8 +313,13 @@ async def validate_api_key_with_backend(api_key: str) -> Optional[dict]:
         "error": "Invalid or expired API key"
     }
     """
+    # Get config dynamically to support runtime changes
+    auth_enabled = is_auth_enabled()
+    backend_secret = get_backend_secret()
+    backend_url = get_backend_url()
+
     # For development/testing without backend
-    if not AUTH_ENABLED:
+    if not auth_enabled:
         return {
             "valid": True,
             "user_id": "dev_user",
@@ -309,7 +330,7 @@ async def validate_api_key_with_backend(api_key: str) -> Optional[dict]:
     # Check for internal/admin keys (for your backend services)
     if api_key.startswith("qrb_admin_"):
         expected_hash = hashlib.sha256(
-            f"{BACKEND_SECRET}:{api_key}".encode()
+            f"{backend_secret}:{api_key}".encode()
         ).hexdigest()[:16]
         if api_key.endswith(expected_hash):
             return {
@@ -324,9 +345,9 @@ async def validate_api_key_with_backend(api_key: str) -> Optional[dict]:
         import httpx
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{BACKEND_VALIDATION_URL}/api/qr-builder/validate-key",
+                f"{backend_url}/api/qr-builder/validate-key",
                 json={"api_key": api_key},
-                headers={"Authorization": f"Bearer {BACKEND_SECRET}"},
+                headers={"Authorization": f"Bearer {backend_secret}"},
                 timeout=5.0,
             )
             if response.status_code == 200:
@@ -339,7 +360,7 @@ async def validate_api_key_with_backend(api_key: str) -> Optional[dict]:
 
 async def get_current_user(
     request: Request,
-    api_key: Optional[str] = Depends(api_key_header),
+    api_key: str | None = Depends(api_key_header),
 ) -> UserSession:
     """
     Dependency to get current authenticated user.
@@ -350,9 +371,11 @@ async def get_current_user(
             if not user.can_access_style("logo"):
                 raise HTTPException(403, "Upgrade to Pro for logo QR codes")
     """
+    auth_enabled = is_auth_enabled()
+
     # Allow unauthenticated access for free tier (with limits)
     if not api_key:
-        if not AUTH_ENABLED:
+        if not auth_enabled:
             # Dev mode - return business tier
             return session_store.get_or_create_session(
                 user_id="anonymous",
@@ -361,8 +384,9 @@ async def get_current_user(
             )
 
         # Production - anonymous users get free tier
+        # Use SHA256 instead of MD5 for IP hashing (more secure)
         client_ip = request.client.host if request.client else "unknown"
-        anonymous_key = f"anon_{hashlib.md5(client_ip.encode()).hexdigest()[:8]}"
+        anonymous_key = f"anon_{hashlib.sha256(client_ip.encode()).hexdigest()[:12]}"
         return session_store.get_or_create_session(
             user_id=f"anonymous_{client_ip}",
             tier=UserTier.FREE,
@@ -495,7 +519,10 @@ async def verify_backend_webhook(
 
     Your backend should include the secret in the X-Webhook-Secret header.
     """
-    if x_webhook_secret != BACKEND_SECRET:
+    backend_secret = get_backend_secret()
+    # Use constant-time comparison to prevent timing attacks
+    import secrets
+    if not secrets.compare_digest(x_webhook_secret, backend_secret):
         raise HTTPException(
             status_code=401,
             detail="Invalid webhook secret",

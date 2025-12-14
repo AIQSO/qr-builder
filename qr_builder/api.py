@@ -32,41 +32,34 @@ from __future__ import annotations
 
 import io
 import logging
-import zipfile
 import tempfile
-import time
-from pathlib import Path
-from typing import List, Optional
+import zipfile
 from enum import Enum
+from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Depends, Body
+from fastapi import Body, Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
-
-from .core import (
-    generate_qr,
-    calculate_position,
-    generate_qr_with_logo,
-    generate_qr_with_text,
-    generate_artistic_qr,
-    generate_qart,
-    QRStyle,
-    ARTISTIC_PRESETS,
-)
+from fastapi.responses import StreamingResponse
 
 from .auth import (
-    UserSession,
-    UserTier,
-    get_current_user,
-    require_auth,
-    check_rate_limit,
-    require_style,
-    verify_backend_webhook,
-    session_store,
-    get_tier_info,
-    get_all_tiers_info,
     ALLOWED_ORIGINS,
     AUTH_ENABLED,
+    UserSession,
+    UserTier,
+    get_all_tiers_info,
+    get_current_user,
+    require_style,
+    session_store,
+    verify_backend_webhook,
+)
+from .core import (
+    ARTISTIC_PRESETS,
+    calculate_position,
+    generate_artistic_qr,
+    generate_qart,
+    generate_qr,
+    generate_qr_with_logo,
+    generate_qr_with_text,
 )
 
 logger = logging.getLogger(__name__)
@@ -379,7 +372,7 @@ async def create_qr_with_text_endpoint(
 async def create_artistic_qr(
     image: UploadFile = File(..., description="Image to blend into QR pattern."),
     data: str = Form(..., description="Text or URL to encode."),
-    preset: Optional[PresetEnum] = Form(None, description="Quality preset (small/medium/large/hd)."),
+    preset: PresetEnum | None = Form(None, description="Quality preset (small/medium/large/hd)."),
     version: int = Form(10, description="QR version 1-40 (higher = more detail)."),
     contrast: float = Form(1.0, description="Image contrast (try 1.2-1.5)."),
     brightness: float = Form(1.0, description="Image brightness (try 1.1-1.2)."),
@@ -563,7 +556,7 @@ async def embed_qr(
 
 @app.post("/batch/embed", tags=["batch"])
 async def batch_embed_qr(
-    backgrounds: List[UploadFile] = File(..., description="Multiple background images."),
+    backgrounds: list[UploadFile] = File(..., description="Multiple background images."),
     data: str = Form(..., description="Text or URL to encode."),
     scale: float = Form(0.3, description="Fraction of background width to use for QR."),
     position: str = Form("center"),
@@ -649,9 +642,9 @@ async def batch_embed_qr(
 
 @app.post("/batch/artistic", tags=["batch"])
 async def batch_artistic_qr(
-    images: List[UploadFile] = File(..., description="Multiple images to transform."),
+    images: list[UploadFile] = File(..., description="Multiple images to transform."),
     data: str = Form(..., description="Text or URL to encode."),
-    preset: Optional[PresetEnum] = Form(PresetEnum.large, description="Quality preset."),
+    preset: PresetEnum | None = Form(PresetEnum.large, description="Quality preset."),
     user: UserSession = Depends(require_style("artistic")),
 ):
     """
@@ -871,6 +864,7 @@ async def cleanup_old_logs(
 def run() -> None:
     """Convenience entrypoint for `qr-builder-api` script."""
     import os
+
     import uvicorn
 
     host = os.getenv("QR_BUILDER_HOST", "0.0.0.0")
