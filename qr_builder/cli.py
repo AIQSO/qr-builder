@@ -15,7 +15,14 @@ import argparse
 import logging
 from pathlib import Path
 
-from .core import generate_qr_only, embed_qr_in_image, generate_qr_with_logo, generate_artistic_qr, generate_qart, generate_qr_with_text
+from .core import (
+    embed_qr_in_image,
+    generate_artistic_qr,
+    generate_qart,
+    generate_qr_only,
+    generate_qr_with_logo,
+    generate_qr_with_text,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -228,7 +235,7 @@ def main() -> None:
     elif args.command == "batch-embed":
         from glob import glob
         from os import makedirs
-        from os.path import basename, splitext, join
+        from os.path import basename, splitext
 
         input_dir = Path(args.input_dir)
         output_dir = Path(args.output_dir)

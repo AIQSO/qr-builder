@@ -15,10 +15,9 @@ Supported styles:
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Literal, Optional
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
 import qrcode
 from PIL import Image
@@ -55,7 +54,7 @@ class QRConfig:
     """Configuration for QR code generation."""
     data: str
     style: QRStyle = QRStyle.BASIC
-    output_path: Optional[str] = None
+    output_path: str | None = None
 
     # Basic options
     size: int = 500
@@ -63,7 +62,7 @@ class QRConfig:
     back_color: str = "white"
 
     # Image-based options (for artistic, qart, logo, embed)
-    image_path: Optional[str] = None
+    image_path: str | None = None
 
     # Logo options
     logo_scale: float = 0.25
@@ -73,7 +72,7 @@ class QRConfig:
     contrast: float = 1.0
     brightness: float = 1.0
     version: int = 10
-    preset: Optional[str] = None  # small, medium, large, hd
+    preset: str | None = None  # small, medium, large, hd
 
     # QArt options
     point_size: int = 8
@@ -434,7 +433,7 @@ def generate_qart(
     point_size: int = 8,
     dither: bool = True,
     only_data: bool = False,
-    fill_color: tuple = None,
+    fill_color: tuple | None = None,
 ) -> Path:
     """
     Generate a QArt-style QR code using halftone/dithering techniques.
@@ -458,7 +457,10 @@ def generate_qart(
 
     Raises:
         FileNotFoundError: If image file doesn't exist.
+        ValueError: If parameters are invalid.
+        RuntimeError: If pyqart command fails.
     """
+    import shutil
     import subprocess
 
     image_path = Path(image_path)
@@ -467,13 +469,36 @@ def generate_qart(
     if not image_path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
 
+    # Validate parameters to prevent injection
+    if not 1 <= version <= 40:
+        raise ValueError(f"Version must be between 1 and 40, got {version}")
+    if not 1 <= point_size <= 100:
+        raise ValueError(f"Point size must be between 1 and 100, got {point_size}")
+    if fill_color is not None:
+        if len(fill_color) != 3:
+            raise ValueError("fill_color must be an RGB tuple of 3 integers")
+        for i, c in enumerate(fill_color):
+            if not 0 <= c <= 255:
+                raise ValueError(f"Color component {i} must be between 0 and 255, got {c}")
+
+    # Validate data doesn't contain shell metacharacters (defense in depth)
+    validate_data(data)
+
+    # Check if pyqart is available
+    pyqart_path = shutil.which("pyqart")
+    if pyqart_path is None:
+        raise RuntimeError(
+            "pyqart command not found. Install it with: pip install pyqart"
+        )
+
     logger.info("Generating QArt from image: %s", image_path)
 
+    # Build command with validated parameters
     cmd = [
-        "pyqart",
-        "-v", str(version),
-        "-p", str(point_size),
-        "-o", str(output_path),
+        pyqart_path,
+        "-v", str(int(version)),
+        "-p", str(int(point_size)),
+        "-o", str(output_path.resolve()),
     ]
 
     if dither:
@@ -481,11 +506,33 @@ def generate_qart(
     if only_data:
         cmd.append("-y")
     if fill_color:
-        cmd.extend(["-c", str(fill_color[0]), str(fill_color[1]), str(fill_color[2])])
+        cmd.extend([
+            "-c",
+            str(int(fill_color[0])),
+            str(int(fill_color[1])),
+            str(int(fill_color[2]))
+        ])
 
-    cmd.extend([data, str(image_path)])
+    cmd.extend([data, str(image_path.resolve())])
 
-    subprocess.run(cmd, check=True, capture_output=True)
+    try:
+        result = subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            timeout=60,  # 60 second timeout
+        )
+        logger.debug("pyqart output: %s", result.stdout.decode())
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError("QArt generation timed out after 60 seconds") from e
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.decode() if e.stderr else str(e)
+        logger.error("pyqart failed: %s", error_msg)
+        raise RuntimeError(f"QArt generation failed: {error_msg}") from e
+
+    if not output_path.exists():
+        raise RuntimeError("QArt generation completed but output file not created")
+
     logger.info("Saved QArt: %s", output_path)
     return output_path
 
@@ -554,10 +601,10 @@ def generate_qr_with_text(
     # Try to load a nice font, fall back to default
     try:
         font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", font_size)
-    except (IOError, OSError):
+    except OSError:
         try:
             font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size)
-        except (IOError, OSError):
+        except OSError:
             font = ImageFont.load_default()
 
     # Get text bounding box
