@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-04-14
+
+### Changed
+- Dependency audit: dropped unused `segno` and `qrcode-artistic` from runtime deps
+- Gated `amzqr` and `pyqart` behind a new `[artistic]` optional extra (both unmaintained upstream)
+- Raise a helpful `ImportError` when artistic QR functions are called without the `[artistic]` extra
+- Configured ruff to accept standard FastAPI `Depends`/`File`/`Form`/`Body` default patterns
+- Consolidated mkdocs navigation onto `docs/API.md`; removed stub `docs/api.md`
+- Canonical repository URLs switched to `AIQSO/qr-builder`
+- `Dockerfile` now installs dependencies from the hash-pinned `requirements.lock` for reproducible builds
+
+### Added
+- `requirements.lock` with hash-pinned transitive dependencies (generated via `pip-compile`)
+- `CONTRIBUTING.md` with quality gates and release process
+- `SECURITY.md` with private vulnerability disclosure policy
+- `.github/dependabot.yml` — weekly updates for pip, github-actions, and docker
+- `.github/workflows/security.yml` — pip-audit and deptry on every push/PR and weekly schedule
+- `.github/workflows/publish.yml` — PyPI (Trusted Publisher via OIDC), multi-arch Docker image to ghcr.io with SBOM and provenance, and GitHub Release on `v*.*.*` tag
+- `pytest-asyncio` added to `[dev]` extras (fixes async test collection)
+- `pip-audit`, `deptry`, and `pip-tools` added to `[dev]` extras
+- Expanded `docs/index.md` and `docs/getting-started.md`
+
+### Fixed
+- All 13 `B904` `raise ... from` violations in `api.py` — exceptions are now chained correctly, preserving the underlying traceback in logs
+- `E402` late-import in `auth.py`
+- Docker smoke test in CI: now supplies `QR_BUILDER_BACKEND_SECRET` and polls `/health` for up to 30s with log dump on failure
+
+### Removed
+- Stale `requirements.txt` (was missing 6 runtime deps and caused broken installs)
+- Stub `docs/api.md` (content consolidated into `docs/API.md`)
+
 ## [0.3.0] - 2024-12-14
 
 ### Added
