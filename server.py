@@ -372,7 +372,7 @@ HTML_TEMPLATE = """
         </div>
 
         <footer>
-            Powered by <a href="https://github.com/qvidal01/qr-builder">QR Builder</a> |
+            Powered by <a href="https://github.com/AIQSO/qr-builder">QR Builder</a> |
             Your Company
         </footer>
     </div>

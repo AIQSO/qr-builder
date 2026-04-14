@@ -394,8 +394,15 @@ def generate_artistic_qr(
 
     Raises:
         FileNotFoundError: If image file doesn't exist.
+        ImportError: If the 'artistic' extra is not installed.
     """
-    from amzqr import amzqr
+    try:
+        from amzqr import amzqr
+    except ImportError as e:
+        raise ImportError(
+            "Artistic QR generation requires the 'artistic' extra. "
+            'Install it with: pip install "qr-builder[artistic]"'
+        ) from e
 
     image_path = Path(image_path)
     output_path = Path(output_path)

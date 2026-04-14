@@ -29,13 +29,9 @@ from enum import Enum
 from fastapi import Depends, Header, HTTPException, Request
 from fastapi.security import APIKeyHeader
 
-logger = logging.getLogger(__name__)
-
-# =============================================================================
-# Configuration (from centralized config module)
-# =============================================================================
-
 from .config import get_config
+
+logger = logging.getLogger(__name__)
 
 
 def get_backend_secret() -> str:

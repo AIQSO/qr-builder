@@ -1,9 +1,9 @@
 site_name: qr-builder
 site_description: Generate and embed QR codes into images via Python, CLI, and FastAPI
-site_url: https://qvidal01.github.io/qr-builder/
+site_url: https://aiqso.github.io/qr-builder/
 
-repo_name: qvidal01/qr-builder
-repo_url: https://github.com/qvidal01/qr-builder
+repo_name: AIQSO/qr-builder
+repo_url: https://github.com/AIQSO/qr-builder
 edit_uri: edit/main/docs/
 
 theme:
@@ -53,4 +53,5 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
-  - API Reference: api.md
+  - API Reference: API.md
+  - Next.js Integration: NEXTJS_INTEGRATION.md

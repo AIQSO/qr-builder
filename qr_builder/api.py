@@ -238,7 +238,7 @@ async def create_qr(
     except Exception as exc:
         logger.exception("Failed to generate QR.")
         session_store.log_usage(user.user_id, "basic", False, {"error": str(exc)})
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # Log successful generation
     session_store.log_usage(user.user_id, "basic", True, {"size": size})
@@ -298,11 +298,11 @@ async def create_qr_with_logo(
 
     except ValueError as ve:
         session_store.log_usage(user.user_id, "logo", False, {"error": str(ve)})
-        raise HTTPException(status_code=400, detail=str(ve))
+        raise HTTPException(status_code=400, detail=str(ve)) from ve
     except Exception as exc:
         logger.exception("Failed to generate QR with logo.")
         session_store.log_usage(user.user_id, "logo", False, {"error": str(exc)})
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     session_store.log_usage(user.user_id, "logo", True, {"size": size})
     return StreamingResponse(io.BytesIO(result), media_type="image/png")
@@ -354,11 +354,11 @@ async def create_qr_with_text_endpoint(
 
     except ValueError as ve:
         session_store.log_usage(user.user_id, "text", False, {"error": str(ve)})
-        raise HTTPException(status_code=400, detail=str(ve))
+        raise HTTPException(status_code=400, detail=str(ve)) from ve
     except Exception as exc:
         logger.exception("Failed to generate QR with text.")
         session_store.log_usage(user.user_id, "text", False, {"error": str(exc)})
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     session_store.log_usage(user.user_id, "text", True, {"size": size})
     return StreamingResponse(io.BytesIO(result), media_type="image/png")
@@ -426,7 +426,7 @@ async def create_artistic_qr(
     except Exception as exc:
         logger.exception("Failed to generate artistic QR.")
         session_store.log_usage(user.user_id, "artistic", False, {"error": str(exc)})
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     session_store.log_usage(user.user_id, "artistic", True, {"preset": preset.value if preset else "custom"})
     return StreamingResponse(io.BytesIO(result), media_type="image/png")
@@ -488,7 +488,7 @@ async def create_qart(
     except Exception as exc:
         logger.exception("Failed to generate QArt.")
         session_store.log_usage(user.user_id, "qart", False, {"error": str(exc)})
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     session_store.log_usage(user.user_id, "qart", True)
     return StreamingResponse(io.BytesIO(result), media_type="image/png")
@@ -540,11 +540,11 @@ async def embed_qr(
     except ValueError as ve:
         logger.warning("Bad request for /embed: %s", ve)
         session_store.log_usage(user.user_id, "embed", False, {"error": str(ve)})
-        raise HTTPException(status_code=400, detail=str(ve))
-    except Exception:
+        raise HTTPException(status_code=400, detail=str(ve)) from ve
+    except Exception as exc:
         logger.exception("Failed to embed QR.")
         session_store.log_usage(user.user_id, "embed", False)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     session_store.log_usage(user.user_id, "embed", True)
     return StreamingResponse(out_buf, media_type="image/png")
@@ -626,11 +626,11 @@ async def batch_embed_qr(
     except ValueError as ve:
         logger.warning("Bad request for /batch/embed: %s", ve)
         session_store.log_usage(user.user_id, "batch_embed", False, {"error": str(ve)})
-        raise HTTPException(status_code=400, detail=str(ve))
-    except Exception:
+        raise HTTPException(status_code=400, detail=str(ve)) from ve
+    except Exception as exc:
         logger.exception("Failed to batch embed QR.")
         session_store.log_usage(user.user_id, "batch_embed", False)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     session_store.log_usage(user.user_id, "batch_embed", True, {"count": len(backgrounds)})
     return StreamingResponse(
@@ -709,10 +709,10 @@ async def batch_artistic_qr(
 
         zip_buf.seek(0)
 
-    except Exception:
+    except Exception as exc:
         logger.exception("Failed to batch generate artistic QR.")
         session_store.log_usage(user.user_id, "batch_artistic", False)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     session_store.log_usage(user.user_id, "batch_artistic", True, {"count": len(images)})
     return StreamingResponse(
@@ -746,8 +746,8 @@ async def webhook_update_tier(
     """
     try:
         new_tier = UserTier(tier)
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid tier: {tier}")
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=f"Invalid tier: {tier}") from ve
 
     success = session_store.update_user_tier(api_key, new_tier)
 

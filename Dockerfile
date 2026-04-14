@@ -15,13 +15,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy application files
+# Copy lock file first for better layer caching, then install pinned deps
+COPY requirements.lock ./
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock
+
+# Copy application and install the package itself (without re-resolving deps)
 COPY pyproject.toml README.md ./
 COPY qr_builder ./qr_builder
 COPY server.py ./
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir --no-deps -e .
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash appuser && \
