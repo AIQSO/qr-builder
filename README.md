@@ -1,7 +1,10 @@
 # QR Builder
 
-[![CI](https://github.com/aiqso/qr-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/aiqso/qr-builder/actions/workflows/ci.yml)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI](https://img.shields.io/pypi/v/qr-builder)](https://pypi.org/project/qr-builder/)
+[![Docker](https://img.shields.io/badge/ghcr.io-aiqso%2Fqr--builder-blue)](https://github.com/AIQSO/qr-builder/pkgs/container/qr-builder)
+[![Docs](https://img.shields.io/badge/docs-aiqso.github.io-blue)](https://aiqso.github.io/qr-builder/)
+[![CI](https://github.com/AIQSO/qr-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/AIQSO/qr-builder/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 A production-ready Python package for generating QR codes with multiple artistic styles. Perfect for marketing materials, product packaging, event flyers, and website integration.
