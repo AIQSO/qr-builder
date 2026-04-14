@@ -94,7 +94,20 @@ jobs:
 
       - name: Test Docker image
         run: |
-          docker run -d --name qr-test -p 8000:8000 qr-builder-api
-          sleep 5
-          curl -f http://localhost:8000/health || exit 1
+          docker run -d --name qr-test -p 8000:8000 \
+            -e QR_BUILDER_ENV=development \
+            -e QR_BUILDER_BACKEND_SECRET=ci-smoke-test-secret \
+            qr-builder-api
+          # Wait up to 30s for the app to become ready instead of a flat sleep
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health > /dev/null; then
+              echo "Health check passed after ${i}s"
+              docker stop qr-test
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Health check did not pass within 30s. Container logs:"
+          docker logs qr-test
           docker stop qr-test
+          exit 1
