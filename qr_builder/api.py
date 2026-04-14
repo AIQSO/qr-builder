@@ -20,12 +20,12 @@ Entry points (after install):
 Or manually:
     uvicorn qr_builder.api:app --reload
 
-Integration with aiqso.io:
+Integration with your-domain.io:
     Set environment variables:
     - QR_BUILDER_AUTH_ENABLED=true
     - QR_BUILDER_BACKEND_SECRET=your-secret
-    - QR_BUILDER_BACKEND_URL=https://api.aiqso.io
-    - QR_BUILDER_ALLOWED_ORIGINS=https://aiqso.io,https://www.aiqso.io
+    - QR_BUILDER_BACKEND_URL=https://api.your-domain.io
+    - QR_BUILDER_ALLOWED_ORIGINS=https://your-domain.io,https://www.your-domain.io
 """
 
 from __future__ import annotations
@@ -77,7 +77,7 @@ Include your API key in the `X-API-Key` header:
 X-API-Key: your_api_key_here
 ```
 
-Get your API key at [aiqso.io/portal](https://aiqso.io/portal)
+Get your API key at [your-domain.io/portal](https://your-domain.io/portal)
 
 ## Tiers
 
@@ -107,7 +107,7 @@ Get your API key at [aiqso.io/portal](https://aiqso.io/portal)
     version="0.3.0",
 )
 
-# CORS middleware - configured for aiqso.io
+# CORS middleware - configured for your-domain.io
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS if AUTH_ENABLED else ["*"],
@@ -218,14 +218,14 @@ async def create_qr(
         raise HTTPException(
             status_code=403,
             detail=f"Size {size} exceeds your tier limit of {user.limits.max_qr_size}px. "
-                   f"Upgrade at https://aiqso.io/portal",
+                   f"Upgrade at https://your-domain.io/portal",
         )
 
     # Check custom colors
     if (fill_color.startswith("#") or back_color.startswith("#")) and not user.can_use_custom_colors():
         raise HTTPException(
             status_code=403,
-            detail="Custom hex colors require Pro tier. Upgrade at https://aiqso.io/portal",
+            detail="Custom hex colors require Pro tier. Upgrade at https://your-domain.io/portal",
         )
 
     try:
@@ -238,7 +238,7 @@ async def create_qr(
     except Exception as exc:
         logger.exception("Failed to generate QR.")
         session_store.log_usage(user.user_id, "basic", False, {"error": str(exc)})
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # Log successful generation
     session_store.log_usage(user.user_id, "basic", True, {"size": size})
@@ -298,11 +298,11 @@ async def create_qr_with_logo(
 
     except ValueError as ve:
         session_store.log_usage(user.user_id, "logo", False, {"error": str(ve)})
-        raise HTTPException(status_code=400, detail=str(ve))
+        raise HTTPException(status_code=400, detail=str(ve)) from ve
     except Exception as exc:
         logger.exception("Failed to generate QR with logo.")
         session_store.log_usage(user.user_id, "logo", False, {"error": str(exc)})
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     session_store.log_usage(user.user_id, "logo", True, {"size": size})
     return StreamingResponse(io.BytesIO(result), media_type="image/png")
@@ -354,11 +354,11 @@ async def create_qr_with_text_endpoint(
 
     except ValueError as ve:
         session_store.log_usage(user.user_id, "text", False, {"error": str(ve)})
-        raise HTTPException(status_code=400, detail=str(ve))
+        raise HTTPException(status_code=400, detail=str(ve)) from ve
     except Exception as exc:
         logger.exception("Failed to generate QR with text.")
         session_store.log_usage(user.user_id, "text", False, {"error": str(exc)})
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     session_store.log_usage(user.user_id, "text", True, {"size": size})
     return StreamingResponse(io.BytesIO(result), media_type="image/png")
@@ -426,7 +426,7 @@ async def create_artistic_qr(
     except Exception as exc:
         logger.exception("Failed to generate artistic QR.")
         session_store.log_usage(user.user_id, "artistic", False, {"error": str(exc)})
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     session_store.log_usage(user.user_id, "artistic", True, {"preset": preset.value if preset else "custom"})
     return StreamingResponse(io.BytesIO(result), media_type="image/png")
@@ -488,7 +488,7 @@ async def create_qart(
     except Exception as exc:
         logger.exception("Failed to generate QArt.")
         session_store.log_usage(user.user_id, "qart", False, {"error": str(exc)})
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     session_store.log_usage(user.user_id, "qart", True)
     return StreamingResponse(io.BytesIO(result), media_type="image/png")
@@ -540,11 +540,11 @@ async def embed_qr(
     except ValueError as ve:
         logger.warning("Bad request for /embed: %s", ve)
         session_store.log_usage(user.user_id, "embed", False, {"error": str(ve)})
-        raise HTTPException(status_code=400, detail=str(ve))
-    except Exception:
+        raise HTTPException(status_code=400, detail=str(ve)) from ve
+    except Exception as exc:
         logger.exception("Failed to embed QR.")
         session_store.log_usage(user.user_id, "embed", False)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     session_store.log_usage(user.user_id, "embed", True)
     return StreamingResponse(out_buf, media_type="image/png")
@@ -575,13 +575,13 @@ async def batch_embed_qr(
         raise HTTPException(
             status_code=403,
             detail=f"Batch size {len(backgrounds)} exceeds your tier limit of {user.get_max_batch_size()}. "
-                   f"Upgrade at https://aiqso.io/portal",
+                   f"Upgrade at https://your-domain.io/portal",
         )
 
     if user.get_max_batch_size() == 0:
         raise HTTPException(
             status_code=403,
-            detail="Batch processing requires Pro or Business tier. Upgrade at https://aiqso.io/portal",
+            detail="Batch processing requires Pro or Business tier. Upgrade at https://your-domain.io/portal",
         )
 
     try:
@@ -626,11 +626,11 @@ async def batch_embed_qr(
     except ValueError as ve:
         logger.warning("Bad request for /batch/embed: %s", ve)
         session_store.log_usage(user.user_id, "batch_embed", False, {"error": str(ve)})
-        raise HTTPException(status_code=400, detail=str(ve))
-    except Exception:
+        raise HTTPException(status_code=400, detail=str(ve)) from ve
+    except Exception as exc:
         logger.exception("Failed to batch embed QR.")
         session_store.log_usage(user.user_id, "batch_embed", False)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     session_store.log_usage(user.user_id, "batch_embed", True, {"count": len(backgrounds)})
     return StreamingResponse(
@@ -660,7 +660,7 @@ async def batch_artistic_qr(
     if user.get_max_batch_size() == 0:
         raise HTTPException(
             status_code=403,
-            detail="Batch processing requires Pro or Business tier. Upgrade at https://aiqso.io/portal",
+            detail="Batch processing requires Pro or Business tier. Upgrade at https://your-domain.io/portal",
         )
 
     try:
@@ -709,10 +709,10 @@ async def batch_artistic_qr(
 
         zip_buf.seek(0)
 
-    except Exception:
+    except Exception as exc:
         logger.exception("Failed to batch generate artistic QR.")
         session_store.log_usage(user.user_id, "batch_artistic", False)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     session_store.log_usage(user.user_id, "batch_artistic", True, {"count": len(images)})
     return StreamingResponse(
@@ -723,7 +723,7 @@ async def batch_artistic_qr(
 
 
 # =============================================================================
-# Webhook Endpoints (for aiqso.io backend integration)
+# Webhook Endpoints (for your-domain.io backend integration)
 # =============================================================================
 
 @app.post("/webhooks/update-tier", tags=["webhooks"])
@@ -746,8 +746,8 @@ async def webhook_update_tier(
     """
     try:
         new_tier = UserTier(tier)
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid tier: {tier}")
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=f"Invalid tier: {tier}") from ve
 
     success = session_store.update_user_tier(api_key, new_tier)
 

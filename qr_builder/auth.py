@@ -29,13 +29,9 @@ from enum import Enum
 from fastapi import Depends, Header, HTTPException, Request
 from fastapi.security import APIKeyHeader
 
-logger = logging.getLogger(__name__)
-
-# =============================================================================
-# Configuration (from centralized config module)
-# =============================================================================
-
 from .config import get_config
+
+logger = logging.getLogger(__name__)
 
 
 def get_backend_secret() -> str:
@@ -399,7 +395,7 @@ async def get_current_user(
     if not validation or not validation.get("valid"):
         raise HTTPException(
             status_code=401,
-            detail="Invalid API key. Get your key at https://aiqso.io/portal",
+            detail="Invalid API key. Get your key at https://your-domain.example.com/portal",
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
@@ -420,7 +416,7 @@ async def require_auth(
     if user.user_id.startswith("anonymous"):
         raise HTTPException(
             status_code=401,
-            detail="Authentication required. Sign up at https://aiqso.io/portal",
+            detail="Authentication required. Sign up at https://your-domain.example.com/portal",
         )
     return user
 
@@ -442,7 +438,7 @@ async def check_rate_limit(user: UserSession = Depends(get_current_user)) -> Use
     if not allowed:
         raise HTTPException(
             status_code=429,
-            detail=f"Rate limit exceeded: {reason}. Upgrade at https://aiqso.io/portal",
+            detail=f"Rate limit exceeded: {reason}. Upgrade at https://your-domain.example.com/portal",
             headers={
                 "Retry-After": "60",
                 "X-RateLimit-Limit": str(user.limits.requests_per_minute),
@@ -476,7 +472,7 @@ def require_style(style: str) -> Callable:
             raise HTTPException(
                 status_code=403,
                 detail=f"'{style}' style requires Pro or Business tier. "
-                       f"Upgrade at https://aiqso.io/portal",
+                       f"Upgrade at https://your-domain.example.com/portal",
                 headers={"X-Required-Tier": "pro"},
             )
         return user
@@ -500,7 +496,7 @@ def require_custom_colors() -> Callable:
             raise HTTPException(
                 status_code=403,
                 detail="Custom hex colors require Pro or Business tier. "
-                       "Upgrade at https://aiqso.io/portal",
+                       "Upgrade at https://your-domain.example.com/portal",
             )
         return user
 
