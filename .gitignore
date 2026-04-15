@@ -48,3 +48,14 @@ Thumbs.db
 # Zip file (we don't need to track the original archive)
 qr_builder_project.zip
 
+
+# Aperant data directory
+.auto-claude/
+
+# Auto Claude generated files
+.auto-claude-security.json
+.auto-claude-status
+.claude_settings.json
+.worktrees/
+.security-key
+logs/security/
